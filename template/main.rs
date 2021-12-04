@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::vec::Vec;
 
-fn star_one(_lines: Vec<String>) -> isize {
-    -1
+fn star_one(_lines: &Vec<String>) -> usize {
+    0
 }
 
 fn main() {
@@ -13,7 +13,7 @@ fn main() {
         .map(|x| x.expect("Could not read line"))
         .collect();
 
-    let ans = star_one(lines);
+    let ans = star_one(&lines);
     println!("Star one: {}", ans);
 }
 
@@ -28,7 +28,7 @@ mod tests {
             .map(|x| x.to_string())
             .collect();
 
-        let ans = super::star_one(lines);
+        let ans = super::star_one(&lines);
         assert_eq!(ans, 100);
     }
 }
