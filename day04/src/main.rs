@@ -1,7 +1,7 @@
+use std::fmt;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::vec::Vec;
-use std::fmt;
 
 #[derive(Debug)]
 struct Number {
@@ -18,7 +18,7 @@ impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for y in &self.nrs {
             for x in y {
-                write!(f, "{num:>2} ", num=x.nr)?;
+                write!(f, "{num:>2} ", num = x.nr)?;
             }
             writeln!(f)?;
         }
@@ -51,15 +51,17 @@ impl Board {
                 return true;
             }
         }
+
         false
     }
 
     fn calc_score(&self, last_ans: usize) -> usize {
-        last_ans * self.nrs.iter().fold(0, |yacc, xvec| {
-            yacc + xvec
-                .iter()
-                .fold(0, |xacc, num| if num.marked { xacc } else { xacc + num.nr })
-        })
+        last_ans
+            * self.nrs.iter().fold(0, |yacc, xvec| {
+                yacc + xvec
+                    .iter()
+                    .fold(0, |xacc, num| if num.marked { xacc } else { xacc + num.nr })
+            })
     }
 }
 
@@ -127,6 +129,57 @@ fn star_one(lines: &Vec<&str>) -> usize {
     0
 }
 
+fn star_two(lines: &Vec<&str>) -> usize {
+    let mut boards: Vec<Board> = Vec::new();
+
+    let mut iter = lines.iter();
+    let line = iter.next().expect("At least one line");
+    let answers: Vec<usize> = line
+        .split(',')
+        .map(|x| x.parse::<usize>().expect("Invalid answer"))
+        .collect();
+    iter.next();
+    loop {
+        let mut board = Board { nrs: Vec::new() };
+        for y in 0..5 {
+            if let Some(line) = iter.next() {
+                if line.is_empty() {
+                    break;
+                }
+                board.nrs.push(Vec::new());
+                for num in line.split_whitespace() {
+                    board.nrs[y].push(Number {
+                        nr: num.parse::<usize>().expect("Invalid line"),
+                        marked: false,
+                    });
+                }
+            }
+        }
+        boards.push(board);
+        if iter.next() == None {
+            break;
+        }
+    }
+
+    let board_total = boards.len();
+    let mut board_count: usize = 0;
+    for ans in answers {
+        for board in boards.iter_mut() {
+            if !board.has_won() {
+                board.mark(ans);
+                if board.has_won() {
+                    board_count += 1;
+                    if board_count == board_total {
+                        return board.calc_score(ans);
+                    }
+                }
+            }
+        }
+    }
+
+    0
+}
+
 fn main() {
     let file = File::open("./input").expect("Unreadable input file ./input");
     let lines: Vec<String> = io::BufReader::new(file)
@@ -136,6 +189,9 @@ fn main() {
 
     let ans = star_one(&lines.iter().map(|x| x.as_str()).collect());
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines.iter().map(|x| x.as_str()).collect());
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -167,5 +223,13 @@ mod tests {
 
         let ans = super::star_one(&lines.iter().map(|x| x.as_str()).collect());
         assert_eq!(ans, 4512);
+    }
+
+    #[test]
+    fn test_star_two() {
+        let lines: Vec<String> = TEST_DATA.lines().map(|x| x.to_string()).collect();
+
+        let ans = super::star_two(&lines.iter().map(|x| x.as_str()).collect());
+        assert_eq!(ans, 1924);
     }
 }
