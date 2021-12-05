@@ -68,7 +68,7 @@ impl Field {
     }
 }
 
-fn parse_field(lines: &Vec<String>) -> Field {
+fn parse_field(lines: &Vec<String>, count_diagonal: bool) -> Field {
     let mut field = Field { pos: Vec::new() };
 
     for line in lines {
@@ -79,7 +79,7 @@ fn parse_field(lines: &Vec<String>) -> Field {
         let mut end = linespec.next().expect("Missing end coord").split(",");
         let endx = end.next().expect("Missing end X").parse::<usize>().expect("eND X not a number");
         let endy = end.next().expect("Missing end Y").parse::<usize>().expect("End Y not a number");
-        if startx == endx || starty == endy {
+        if count_diagonal || startx == endx || starty == endy {
             field.walk(startx, starty, endx, endy)
         }
     }
@@ -88,7 +88,12 @@ fn parse_field(lines: &Vec<String>) -> Field {
 }
 
 fn star_one(lines: &Vec<String>) -> usize {
-    let field = parse_field(lines);
+    let field = parse_field(lines, false);
+    field.count_bigger(2)
+}
+
+fn star_two(lines: &Vec<String>) -> usize {
+    let field = parse_field(lines, true);
     field.count_bigger(2)
 }
 
@@ -101,6 +106,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);    
 }
 
 #[cfg(test)]
@@ -125,5 +133,16 @@ mod tests {
 
         let ans = super::star_one(&lines);
         assert_eq!(ans, 5);
+    }
+
+    #[test]
+    fn test_star_two() {
+        let lines: Vec<String> = TEST_DATA
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+
+        let ans = super::star_two(&lines);
+        assert_eq!(ans, 12);
     }
 }
