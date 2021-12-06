@@ -48,6 +48,29 @@ fn star_one(lines: &Vec<String>) -> usize {
     fishes.len()
 }
 
+fn star_two(lines: &Vec<String>) -> usize {
+    let ages: Vec<usize> = lines[0]
+        .split(',')
+        .map(|x| x.parse::<usize>().expect("Invalid number"))
+        .collect();
+
+    let mut age_map: [usize; 9] = [0; 9];
+    for age in ages {
+        age_map[age] += 1;
+    }
+
+    for _ in 0..256 {
+        let zeroes = age_map[0];
+        for i in 1..9 {
+            age_map[i - 1] = age_map[i];
+        }
+        age_map[6] += zeroes;
+        age_map[8] = zeroes;
+    }
+
+    age_map.iter().sum()
+}
+
 fn main() {
     let file = File::open("./input").expect("Unreadable input file ./input");
     let lines: Vec<String> = io::BufReader::new(file)
@@ -57,6 +80,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -69,5 +95,13 @@ mod tests {
 
         let ans = super::star_one(&lines);
         assert_eq!(ans, 5934);
+    }
+
+    #[test]
+    fn test_star_two() {
+        let lines: Vec<String> = TEST_DATA.lines().map(|x| x.to_string()).collect();
+
+        let ans = super::star_two(&lines);
+        assert_eq!(ans, 26984457539);
     }
 }
