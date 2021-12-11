@@ -103,6 +103,21 @@ fn star_one(lines: &Vec<String>) -> usize {
     flashcount
 }
 
+fn star_two(lines: &Vec<String>) -> usize {
+    let mut map = parse(lines);
+    // Assumes rectangular map
+    let mapsize = map.len() * map[0].len();
+
+    let mut flashcount = 0;
+    let mut stepcount = 0;
+    while flashcount < mapsize {
+        flashcount = step(&mut map);
+        stepcount += 1;
+    }
+
+    stepcount
+}
+
 fn main() {
     let file = File::open("./input").expect("Unreadable input file ./input");
     let lines: Vec<String> = io::BufReader::new(file)
@@ -112,6 +127,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -161,5 +179,16 @@ mod tests {
 
         let ans = super::star_one(&lines);
         assert_eq!(ans, 1656);
+    }
+
+    #[test]
+    fn test_star_two() {
+        let lines: Vec<String> = TEST_DATA
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+
+        let ans = super::star_two(&lines);
+        assert_eq!(ans, 195);
     }
 }
