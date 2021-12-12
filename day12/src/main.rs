@@ -26,7 +26,6 @@ fn parse(lines: &Vec<String>) -> HashMap<String, Vec<String>> {
 fn walk_paths(start: &str, system: &HashMap<String, Vec<String>>, path: &mut Vec<String>) -> Vec<Vec<String>> {
     path.push(start.to_string());
     let mut paths: Vec<Vec<String>> = Vec::new();
-    print!("walk from {}: ", start);
 
     for connected in &system[start] {
         if connected == "start" {
@@ -34,21 +33,16 @@ fn walk_paths(start: &str, system: &HashMap<String, Vec<String>>, path: &mut Vec
         }
         if connected != "end" {
             if connected.chars().all(|c| matches!(c, 'a'..='z')) && path.contains(connected) {
-                print!("skipping {} as already been used this path, ", connected);
                 // Skip this branch as it is lowercase and already used
                 continue;
             } else {
-                println!("to {}", connected);
                 let mut nextpath = path.clone();
                 let mut nextpaths = walk_paths(connected, system, &mut nextpath);
                 for p in &mut nextpaths {
-                    println!("- found {}", p.join(", "));
                     paths.push(p.to_vec());
                 }
-                print!("walk from {}: ", start);
             }
         } else {
-            println!("to end");
             path.push(connected.to_string());
             paths.push(path.to_vec());
         }
@@ -59,10 +53,51 @@ fn walk_paths(start: &str, system: &HashMap<String, Vec<String>>, path: &mut Vec
 
 fn star_one(lines: &Vec<String>) -> usize {
     let system = parse(lines);
-    println!("system {:?}", system);
 
     let mut path: Vec<String> = Vec::new();
     let paths = walk_paths("start", &system, &mut path);
+
+    paths.len()
+}
+
+fn walk_paths_twice(start: &str, system: &HashMap<String, Vec<String>>, path: &mut Vec<String>, seen: &mut Vec<String>) -> Vec<Vec<String>> {
+    path.push(start.to_string());
+    let mut paths: Vec<Vec<String>> = Vec::new();
+
+    for connected in &system[start] {
+        if connected == "start" {
+            continue;
+        }
+        if connected != "end" {
+            if connected.chars().all(|c| matches!(c, 'a'..='z')) && path.contains(connected) && seen.len() > 0 {
+                // Skip this branch as it is lowercase and already used
+                continue;
+            } else {
+                let mut nextseen = seen.clone();
+                if connected.chars().all(|c| matches!(c, 'a'..='z')) && path.contains(connected) {
+                    nextseen.push(connected.to_string());
+                }
+                let mut nextpath = path.clone();
+                let mut nextpaths = walk_paths_twice(connected, system, &mut nextpath, &mut nextseen);
+                for p in &mut nextpaths {
+                    paths.push(p.to_vec());
+                }
+            }
+        } else {
+            path.push(connected.to_string());
+            paths.push(path.to_vec());
+        }
+    }
+
+    paths
+}
+
+fn star_two(lines: &Vec<String>) -> usize {
+    let system = parse(lines);
+
+    let mut path: Vec<String> = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    let paths = walk_paths_twice("start", &system, &mut path, &mut seen);
 
     paths.len()
 }
@@ -76,6 +111,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -120,5 +158,28 @@ kj-dc";
 
         let ans = super::star_one(&lines);
         assert_eq!(ans, 19);
+    }
+
+    #[test]
+    fn simple_star_two() {
+        let lines: Vec<String> = SIMPLE_TEST_DATA
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+
+        let ans = super::star_two(&lines);
+        assert_eq!(ans, 36);
+    }
+
+
+    #[test]
+    fn test_star_two() {
+        let lines: Vec<String> = TEST_DATA
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+
+        let ans = super::star_two(&lines);
+        assert_eq!(ans, 103);
     }
 }
