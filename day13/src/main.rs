@@ -143,6 +143,18 @@ fn star_one(lines: &Vec<String>) -> usize {
     count_dots(&paper)
 }
 
+fn star_two(lines: &Vec<String>) {
+    let parse_result = parse(lines);
+    let mut paper = parse_result.0;
+    let folds = parse_result.1;
+
+    for f in &folds {
+        perform_fold(&mut paper, f);
+    }
+
+    print_paper(&paper);
+}
+
 fn main() {
     let file = File::open("./input").expect("Unreadable input file ./input");
     let lines: Vec<String> = io::BufReader::new(file)
@@ -152,6 +164,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    println!("Star two:");
+    star_two(&lines);
 }
 
 #[cfg(test)]
