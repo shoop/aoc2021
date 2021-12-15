@@ -59,12 +59,12 @@ fn run_gen(rules: &HashMap<(char, char), Rule>, counts: &mut HashMap<char, usize
     new_rules
 }
 
-fn star_one(lines: &Vec<String>) -> usize {
+fn run(lines: &Vec<String>, count: usize) -> usize {
     let parse_result = parse(lines);
     let mut rules = parse_result.0;
     let mut counts = parse_result.1;
 
-    for _ in 0..10 {
+    for _ in 0..count {
         rules = run_gen(&rules, &mut counts);
     }
 
@@ -72,6 +72,14 @@ fn star_one(lines: &Vec<String>) -> usize {
     let min = counts.iter().min_by(|a, b| a.1.cmp(&b.1)).map(|(k, _)| k).unwrap();
 
     counts[max] - counts[min]
+}
+
+fn star_one(lines: &Vec<String>) -> usize {
+    run(lines, 10)
+}
+
+fn star_two(lines: &Vec<String>) -> usize {
+    run(lines, 40)
 }
 
 fn main() {
@@ -83,6 +91,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
