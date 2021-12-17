@@ -3,13 +3,31 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::str;
 use std::vec::Vec;
+use num_enum::TryFromPrimitive;
+
+// TODO: really use Rust's enum correctly by adding the subpackets as values in the enum.
+// This is not as easy as it appears because this enum is used as a field in the struct
+// creating a type recursion. Adding the packets as references introduces lifetime
+// constraints...
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
+enum PacketType {
+    Sum,
+    Product,
+    Min,
+    Max,
+    Literal,
+    Gt,
+    Lt,
+    Eq,
+    Invalid = 255,
+}
 
 #[derive(Debug)]
 struct Packet {
     version: u8,
-    type_id: u8,
+    packet_type: PacketType,
     number: u64,
-    length_type_id: u8,
     subpackets: Vec<Packet>,
     bit_length: u32,
 }
@@ -81,19 +99,18 @@ impl PacketDecoder {
 fn parse_packet(decoder: &mut PacketDecoder) -> Packet {
     let mut result: Packet = Packet {
         version: 0,
-        type_id: 0,
+        packet_type: PacketType::Invalid,
         number: 0,
-        length_type_id: 0,
         subpackets: Vec::new(),
         bit_length: 0,
     };
 
     result.version = decoder.get_u8(3);
-    result.type_id = decoder.get_u8(3);
+    result.packet_type = PacketType::try_from(decoder.get_u8(3)).unwrap();
     result.bit_length += 6;
 
-    match result.type_id {
-        4 => {
+    match result.packet_type {
+        PacketType::Literal => {
             let mut num: String = String::from("");
             while decoder.get_u8(1) == 1 {
                 num.push_str(&decoder.next_bits(4).unwrap());
@@ -104,9 +121,9 @@ fn parse_packet(decoder: &mut PacketDecoder) -> Packet {
             result.number = u64::from_str_radix(&num, 2).unwrap();
         }
         _ => {
-            result.length_type_id = decoder.get_u8(1);
+            let length_type_id = decoder.get_u8(1);
             result.bit_length += 1;
-            match result.length_type_id {
+            match length_type_id {
                 0 => {
                     let length_bits = decoder.get_u32(15);
                     result.bit_length += 15;
@@ -127,7 +144,7 @@ fn parse_packet(decoder: &mut PacketDecoder) -> Packet {
                         result.subpackets.push(packet);
                     }
                 },
-                _ => panic!("invalid length type id {}", result.length_type_id)
+                _ => panic!("invalid length type id {}", length_type_id)
             }
         }
     }
@@ -139,11 +156,59 @@ fn calc_version_sum(packet: &Packet) -> usize {
     packet.subpackets.iter().map(|s| calc_version_sum(s)).sum::<usize>() + packet.version as usize
 }
 
+fn calc_expression(packet: &Packet) -> u64 {
+    match packet.packet_type {
+        PacketType::Sum => packet.subpackets.iter().map(|sp| calc_expression(sp)).sum(),
+        PacketType::Product => packet.subpackets.iter().map(|sp| calc_expression(sp)).fold(1, |acc, val| acc * val),
+        PacketType::Min => packet.subpackets.iter().map(|sp| calc_expression(sp)).min().unwrap(),
+        PacketType::Max => packet.subpackets.iter().map(|sp| calc_expression(sp)).max().unwrap(),
+        PacketType::Literal => packet.number,
+        PacketType::Gt => {
+            if packet.subpackets.len() != 2 {
+                panic!("gt packet not exactly two subpackets");
+            }
+            if calc_expression(&packet.subpackets[0]) > calc_expression(&packet.subpackets[1]) {
+                1
+            } else {
+                0
+            }
+        },
+        PacketType::Lt => {
+            if packet.subpackets.len() != 2 {
+                panic!("lt packet not exactly two subpackets");
+            }
+            if calc_expression(&packet.subpackets[0]) < calc_expression(&packet.subpackets[1]) {
+                1
+            } else {
+                0
+            }
+        }
+        PacketType::Eq => {
+            if packet.subpackets.len() != 2 {
+                panic!("lt packet not exactly two subpackets");
+            }
+            if calc_expression(&packet.subpackets[0]) == calc_expression(&packet.subpackets[1]) {
+                1
+            } else {
+                0
+            }
+        },
+        PacketType::Invalid => panic!("invalid packet type while evaluating expression")
+    }
+}
+
 fn star_one(lines: &Vec<String>) -> usize {
     let mut decoder = PacketDecoder::new(&lines[0]);
     let packet = parse_packet(&mut decoder);
     decoder.clear_cache();
     calc_version_sum(&packet)
+}
+
+fn star_two(lines: &Vec<String>) -> u64 {
+    let mut decoder = PacketDecoder::new(&lines[0]);
+    let packet = parse_packet(&mut decoder);
+    decoder.clear_cache();
+    calc_expression(&packet)
 }
 
 fn main() {
@@ -155,6 +220,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -176,7 +244,7 @@ mod tests {
         let mut decoder = super::PacketDecoder::new(&NUMBER_TEST_PACKET);
         let packet = super::parse_packet(&mut decoder);
         assert_eq!(packet.version, 6);
-        assert_eq!(packet.type_id, 4);
+        assert_eq!(packet.packet_type, super::PacketType::Literal);
         assert_eq!(packet.number, 2021);
     }
 
@@ -187,12 +255,11 @@ mod tests {
         let mut decoder = super::PacketDecoder::new(&OPERATOR_TEST_PACKET);
         let packet = super::parse_packet(&mut decoder);
         assert_eq!(packet.version, 1);
-        assert_eq!(packet.type_id, 6);
-        assert_eq!(packet.length_type_id, 0);
+        assert_eq!(packet.packet_type, super::PacketType::Lt);
         assert_eq!(packet.subpackets.len(), 2);
-        assert_eq!(packet.subpackets[0].type_id, 4);
+        assert_eq!(packet.subpackets[0].packet_type, super::PacketType::Literal);
         assert_eq!(packet.subpackets[0].number, 10);
-        assert_eq!(packet.subpackets[1].type_id, 4);
+        assert_eq!(packet.subpackets[1].packet_type, super::PacketType::Literal);
         assert_eq!(packet.subpackets[1].number, 20);
     }
     
@@ -203,14 +270,13 @@ mod tests {
         let mut decoder = super::PacketDecoder::new(&OTHER_OPERATOR_TEST_PACKET);
         let packet = super::parse_packet(&mut decoder);
         assert_eq!(packet.version, 7);
-        assert_eq!(packet.type_id, 3);
-        assert_eq!(packet.length_type_id, 1);
+        assert_eq!(packet.packet_type, super::PacketType::Max);
         assert_eq!(packet.subpackets.len(), 3);
-        assert_eq!(packet.subpackets[0].type_id, 4);
+        assert_eq!(packet.subpackets[0].packet_type, super::PacketType::Literal);
         assert_eq!(packet.subpackets[0].number, 1);
-        assert_eq!(packet.subpackets[1].type_id, 4);
+        assert_eq!(packet.subpackets[1].packet_type, super::PacketType::Literal);
         assert_eq!(packet.subpackets[1].number, 2);
-        assert_eq!(packet.subpackets[2].type_id, 4);
+        assert_eq!(packet.subpackets[2].packet_type, super::PacketType::Literal);
         assert_eq!(packet.subpackets[2].number, 3);
     }
 
