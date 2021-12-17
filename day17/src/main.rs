@@ -1,7 +1,3 @@
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::vec::Vec;
-
 #[derive(Debug)]
 struct Probe {
     x: i32,
