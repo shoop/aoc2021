@@ -1,4 +1,5 @@
-#[derive(Debug)]
+use std::collections::HashSet;
+
 struct Probe {
     x: i32,
     y: i32,
@@ -48,7 +49,7 @@ impl Probe {
     }
 }
 
-fn brute_force(target: &Target) -> i32 {
+fn star_one(target: &Target) -> i32 {
     let mut maxy: i32 = 0;
     for yvel in -200..200 {
         for xvel in -200..200 {
@@ -69,16 +70,35 @@ fn brute_force(target: &Target) -> i32 {
     maxy
 }
 
+fn star_two(target: &Target) -> usize {
+    let mut probes: HashSet<(i32,i32)> = HashSet::new();
+    for yvel in -200..200 {
+        for xvel in -200..200 {
+            let mut probe = Probe::new();
+            probe.yvel = yvel;
+            probe.xvel = xvel;
 
-fn star_one(target: &Target) -> i32 {
-    brute_force(target)
+            while !probe.is_in_target(target) && !probe.can_never_reach_target(target) {
+                probe.step();
+            }
+
+            if probe.is_in_target(target) {
+                probes.insert((yvel, xvel));
+            }
+        }
+    }
+
+    probes.iter().count()
 }
 
 fn main() {
     // For once just hardcoded the input, parsing does not add value here
-    static STAR_ONE_TARGET: Target = Target { xmin: 153, xmax: 199, ymin: -114, ymax: -75 };
-    let ans = star_one(&STAR_ONE_TARGET);
+    static STAR_TARGET: Target = Target { xmin: 153, xmax: 199, ymin: -114, ymax: -75 };
+    let ans = star_one(&STAR_TARGET);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&STAR_TARGET);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
@@ -89,5 +109,11 @@ mod tests {
     fn test_star_one() {
         let ans = super::star_one(&TEST_DATA);
         assert_eq!(ans, 45);
+    }
+
+    #[test]
+    fn test_star_two() {
+        let ans = super::star_two(&TEST_DATA);
+        assert_eq!(ans, 112);
     }
 }
