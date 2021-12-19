@@ -185,6 +185,25 @@ fn star_one(lines: &Vec<String>) -> u32 {
     magnitude(&num)
 }
 
+fn star_two(lines: &Vec<String>) -> u32 {
+    let nums: Vec<Vec<Symbol>> = lines.iter().map(|l| parse_simple(l)).collect();
+    let mut magns: Vec<Vec<u32>> = Vec::new();
+
+    for y in 0..nums.len() {
+        magns.push(Vec::new());
+        for x in 0..nums.len() {
+            if x == y {
+                magns[y].push(0);
+                continue;
+            }
+
+            magns[y].push(magnitude(&reduce(&add(&nums[y], &nums[x]))));
+        }
+    }
+
+    *magns.iter().map(|xvec| xvec.iter().max().unwrap()).max().unwrap()
+}
+
 fn main() {
     let file = File::open("./input").expect("Unreadable input file ./input");
     let lines: Vec<String> = io::BufReader::new(file)
@@ -194,6 +213,9 @@ fn main() {
 
     let ans = star_one(&lines);
     println!("Star one: {}", ans);
+
+    let ans = star_two(&lines);
+    println!("Star two: {}", ans);
 }
 
 #[cfg(test)]
